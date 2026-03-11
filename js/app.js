@@ -83,7 +83,6 @@ async function bootstrap() {
         display_name: domain,
         bio: '',
         public_key: pk,
-        sat_root: '/satellite/sat/',
       }),
     ],
     ['sat/follows/index.json', JSON.stringify({ follows: [] })],

@@ -4,26 +4,36 @@ import * as crypto from './crypto.js';
 
 const DEFAULT_BASE = 'satellite';
 
-// Fetch profile, trying /satellite/satproto.json first, then /satproto.json.
-export async function fetchProfile(domain) {
+// Resolve which repo a user's data lives in, then fetch their profile.
+// Tries /satellite/ first. Falls back to /satproto.json at the root,
+// which may contain {"sat_repo": "custom-name"} pointing elsewhere.
+async function resolve(domain) {
   const primary = await fetch(`https://${domain}/${DEFAULT_BASE}/satproto.json`);
-  if (primary.ok) return primary.json();
-  const fallback = await fetch(`https://${domain}/satproto.json`);
-  if (fallback.ok) return fallback.json();
+  if (primary.ok) {
+    return { profile: await primary.json(), repo: DEFAULT_BASE };
+  }
+  const redirect = await fetch(`https://${domain}/satellite.json`);
+  if (redirect.ok) {
+    const data = await redirect.json();
+    if (data.sat_repo) {
+      const real = await fetch(`https://${domain}/${data.sat_repo}/satproto.json`);
+      if (real.ok) {
+        return { profile: await real.json(), repo: data.sat_repo };
+      }
+    }
+  }
   throw new Error(`Profile not found for ${domain}`);
 }
 
-// Get the sat_root URL prefix for a user (e.g. "https://alice.com/satellite/sat")
+export async function fetchProfile(domain) {
+  const { profile } = await resolve(domain);
+  return profile;
+}
+
+// Get the base URL for a user's sat data (e.g. "https://alice.com/satellite/sat")
 async function getSatRoot(domain) {
-  const profile = await fetchProfile(domain);
-  if (profile.sat_root) {
-    // sat_root can be absolute or relative
-    if (profile.sat_root.startsWith('http')) {
-      return { base: profile.sat_root.replace(/\/$/, ''), profile };
-    }
-    return { base: `https://${domain}${profile.sat_root}`.replace(/\/$/, ''), profile };
-  }
-  return { base: `https://${domain}/${DEFAULT_BASE}/sat`, profile };
+  const { profile, repo } = await resolve(domain);
+  return { base: `https://${domain}/${repo}/sat`, profile };
 }
 
 export async function fetchFollowList(domain) {
