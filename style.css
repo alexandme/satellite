@@ -589,3 +589,14 @@ button:disabled {
   background: #ff00ff;
   color: #000;
 }
+
+.post-pending {
+  opacity: 0.6;
+}
+
+.post-pending-label {
+  color: #f59e0b;
+  font-size: 0.75em;
+  margin-left: 8px;
+  font-style: italic;
+}
